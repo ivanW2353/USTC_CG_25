@@ -6,6 +6,8 @@
 #include "imgui.h"
 #include "shapes/line.h"
 #include "shapes/rect.h"
+#include "shapes/ellipse.h"
+#include "shapes/polygon.h"
 
 namespace USTC_CG
 {
@@ -15,6 +17,8 @@ void Canvas::draw()
     // HW1_TODO: more interaction events
     if (is_hovered_ && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         mouse_click_event();
+    if (is_hovered_ && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+        mouse_right_click_event();
     mouse_move_event();
     if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
         mouse_release_event();
@@ -55,6 +59,23 @@ void Canvas::set_rect()
 }
 
 // HW1_TODO: more shape types, implements
+void Canvas::set_ellipse()
+{
+    draw_status_ = false;
+    shape_type_ = kEllipse;
+}
+
+void Canvas::set_polygon()
+{
+    draw_status_ = false;
+    shape_type_ = kPolygon;
+}
+
+void Canvas::set_freehand()
+{
+    draw_status_ = false;
+    shape_type_ = kFreehand;
+}
 
 void Canvas::clear_shape_list()
 {
@@ -124,14 +145,68 @@ void Canvas::mouse_click_event()
                 break;
             }
             // HW1_TODO: case USTC_CG::Canvas::kEllipse:
+            case USTC_CG::Canvas::kEllipse:
+            {
+                current_shape_ = std::make_shared<Ellipse>(
+                    start_point_.x, start_point_.y, end_point_.x, end_point_.y);
+                break;
+            }
+            case USTC_CG::Canvas::kPolygon:
+            {
+                current_shape_ = std::make_shared<Polygon>(
+                    std::vector<float>{ start_point_.x },
+                    std::vector<float>{ start_point_.y });
+                break;
+            }
+            case USTC_CG::Canvas::kFreehand:
+            {
+                current_shape_ = std::make_shared<Polygon>(
+                    std::vector<float>{ start_point_.x },
+                    std::vector<float>{ start_point_.y });
+                break;
+            }
             default: break;
         }
     }
     else
     {
+        if (shape_type_ == kPolygon)
+        {
+            end_point_ = mouse_pos_in_canvas();
+            std::dynamic_pointer_cast<Polygon>(current_shape_)
+                ->add_control_point(end_point_.x, end_point_.y);
+        }
+        else if (shape_type_ == kFreehand)
+        {
+            end_point_ = mouse_pos_in_canvas();
+            std::dynamic_pointer_cast<Polygon>(current_shape_)
+                ->add_control_point(end_point_.x, end_point_.y);
+        }
+        else
+        {
+            draw_status_ = false;
+            if (current_shape_)
+            {
+                shape_list_.push_back(current_shape_);
+                current_shape_.reset();
+            }
+        }
+    }
+}
+
+void Canvas::mouse_right_click_event()
+{
+    if (shape_type_ == kPolygon && draw_status_)
+    {
         draw_status_ = false;
         if (current_shape_)
         {
+            std::dynamic_pointer_cast<Polygon>(current_shape_)
+                ->add_control_point(
+                    std::dynamic_pointer_cast<Polygon>(current_shape_)
+                        ->get_first_point_x(),
+                    std::dynamic_pointer_cast<Polygon>(current_shape_)
+                        ->get_first_point_y());
             shape_list_.push_back(current_shape_);
             current_shape_.reset();
         }
@@ -146,7 +221,15 @@ void Canvas::mouse_move_event()
         end_point_ = mouse_pos_in_canvas();
         if (current_shape_)
         {
-            current_shape_->update(end_point_.x, end_point_.y);
+            if (shape_type_ == kFreehand)
+            {
+                std::dynamic_pointer_cast<Polygon>(current_shape_)
+                    ->add_control_point(end_point_.x, end_point_.y);
+            }
+            else
+            {
+                current_shape_->update(end_point_.x, end_point_.y);
+            }
         }
     }
 }
@@ -154,6 +237,15 @@ void Canvas::mouse_move_event()
 void Canvas::mouse_release_event()
 {
     // HW1_TODO: Drawing rule for more primitives
+    if (shape_type_ == kFreehand && draw_status_)
+    {
+        draw_status_ = false;
+        if (current_shape_)
+        {
+            shape_list_.push_back(current_shape_);
+            current_shape_.reset();
+        }
+    }
 }
 
 ImVec2 Canvas::mouse_pos_in_canvas() const
