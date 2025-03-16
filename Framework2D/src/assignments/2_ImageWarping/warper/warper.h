@@ -10,15 +10,22 @@
 // warp(...) function to perform the actual warping.
 #pragma once
 
+#include <utility>
+
+#include <Eigen/Dense>
+
 namespace USTC_CG
 {
+    using Point2D = Eigen::Vector2f;
+
 class Warper
 {
    public:
     virtual ~Warper() = default;
 
     // HW2_TODO: A virtual function warp(...)
-    
+    virtual Point2D warp(const Point2D& p) const = 0;
+
     // HW2_TODO: other functions or variables if you need
 };
 }  // namespace USTC_CG

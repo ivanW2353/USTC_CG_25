@@ -3,6 +3,8 @@
 #include <cmath>
 #include <iostream>
 
+#include <warper/IDW_warper.h>
+
 namespace USTC_CG
 {
 using uchar = unsigned char;
@@ -157,8 +159,50 @@ void WarpingWidget::warping()
         case kIDW:
         {
             // HW2_TODO: Implement the IDW warping
-            // use selected points start_points_, end_points_ to construct the map
-            std::cout << "IDW not implemented." << std::endl;
+            // use selected points start_points_, end_points_ to construct the map 检查控制点数量是否合法
+            if (start_points_.size() != end_points_.size() ||
+                start_points_.empty())
+            {
+                std::cerr << "Error: Control points mismatch!" << std::endl;
+                break;
+            }
+
+            // Step 1: 转换控制点格式为 (p_i, q_i)
+            std::vector<std::pair<Point2D, Point2D>> control_points;
+            for (size_t i = 0; i < start_points_.size(); ++i)
+            {
+                // 将ImGui坐标转换为图像坐标系 (注意Y轴方向)
+                Point2D p_i(start_points_[i].x, start_points_[i].y);
+                Point2D q_i(end_points_[i].x, end_points_[i].y);
+                control_points.emplace_back(p_i, q_i);
+            }
+
+            // Step 2: 初始化IDW变形器
+            IDWWarper idw_warper(
+                control_points, 2.0f /*mu*/, 1e-6f /*epsilon*/);
+
+            // Step 3: 反向映射变形 (目标图像 -> 原图)
+            for (int y = 0; y < data_->height(); ++y)
+            {
+                for (int x = 0; x < data_->width(); ++x)
+                {
+                    // 目标图像坐标 (x,y)
+                    Point2D target(x, y);
+
+                    // 使用IDW映射到原图坐标
+                    Point2D source = idw_warper.warp(target);
+
+                    // 边界检查
+                    int src_x = std::clamp(
+                        static_cast<int>(source.x()), 0, data_->width() - 1);
+                    int src_y = std::clamp(
+                        static_cast<int>(source.y()), 0, data_->height() - 1);
+
+                    // 复制最近像素颜色 (可替换为双线性插值)
+                    warped_image.set_pixel(
+                        x, y, data_->get_pixel(src_x, src_y));
+                }
+            }
             break;
         }
         case kRBF:
