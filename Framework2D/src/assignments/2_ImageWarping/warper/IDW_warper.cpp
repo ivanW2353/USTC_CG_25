@@ -4,10 +4,8 @@ namespace USTC_CG
 {
 IDWWarper::IDWWarper(
     const std::vector<std::pair<Point2D, Point2D>>& control_points,
-    float mu,
-    float epsilon)
-    : mu_(mu),
-      epsilon_(epsilon)
+    float mu)
+    : mu_(mu)
 {
     // Step 1: 去重控制点（基于整数坐标精确匹配）
     control_points_ = control_points;
@@ -55,9 +53,6 @@ void IDWWarper::precompute_transformations()
             const Eigen::Vector2f dq = control_points_[j].second - q_i;
             B += sigma * dq * dp.transpose();
         }
-
-        // 正则化矩阵
-        A += epsilon_ * Eigen::Matrix2f::Identity();
 
         // 求解 T_i = B * A^{-1}
         T_[i] = B * A.inverse();

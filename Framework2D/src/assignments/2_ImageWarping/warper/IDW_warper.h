@@ -21,14 +21,12 @@ class IDWWarper : public Warper
     // HW2_TODO: other functions or variables if you need
     IDWWarper(
         const std::vector<std::pair<Point2D, Point2D>>& control_points,
-        float mu = 2.0f,
-        float epsilon = 1e-6f);
+        float mu = 2.0f);
 
    private:
     std::vector<std::pair<Point2D, Point2D>> control_points_;
     std::vector<Eigen::Matrix2f> T_;
     float mu_;
-    float epsilon_;
 
     void precompute_transformations();
 };

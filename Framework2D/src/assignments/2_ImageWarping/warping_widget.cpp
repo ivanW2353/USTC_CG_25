@@ -172,14 +172,15 @@ void WarpingWidget::warping()
             for (size_t i = 0; i < start_points_.size(); ++i)
             {
                 // 将ImGui坐标转换为图像坐标系 (注意Y轴方向)
-                Point2D p_i(start_points_[i].x, start_points_[i].y);
-                Point2D q_i(end_points_[i].x, end_points_[i].y);
+                Point2D p_i(
+                    start_points_[i].x, data_->height() - start_points_[i].y);
+                Point2D q_i(
+                    end_points_[i].x, data_->height() - end_points_[i].y);
                 control_points.emplace_back(p_i, q_i);
             }
 
             // Step 2: 初始化IDW变形器
-            IDWWarper idw_warper(
-                control_points, 2.0f /*mu*/, 1e-6f /*epsilon*/);
+            IDWWarper idw_warper(control_points, 2.0f /*mu*/);
 
             // Step 3: 反向映射变形 (目标图像 -> 原图)
             for (int y = 0; y < data_->height(); ++y)
@@ -187,20 +188,20 @@ void WarpingWidget::warping()
                 for (int x = 0; x < data_->width(); ++x)
                 {
                     // 目标图像坐标 (x,y)
-                    Point2D target(x, y);
+                    Point2D source(x, y);
 
                     // 使用IDW映射到原图坐标
-                    Point2D source = idw_warper.warp(target);
+                    Point2D target = idw_warper.warp(source);
 
                     // 边界检查
-                    int src_x = std::clamp(
-                        static_cast<int>(source.x()), 0, data_->width() - 1);
-                    int src_y = std::clamp(
-                        static_cast<int>(source.y()), 0, data_->height() - 1);
+                    int target_x = std::clamp(
+                        static_cast<int>(target.x()), 0, data_->width() - 1);
+                    int target_y = std::clamp(
+                        static_cast<int>(target.y()), 0, data_->height() - 1);
 
                     // 复制最近像素颜色 (可替换为双线性插值)
                     warped_image.set_pixel(
-                        x, y, data_->get_pixel(src_x, src_y));
+                        target_x, target_y, data_->get_pixel(x, y));
                 }
             }
             break;
