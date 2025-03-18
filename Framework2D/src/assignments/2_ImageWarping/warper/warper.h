@@ -10,13 +10,16 @@
 // warp(...) function to perform the actual warping.
 #pragma once
 
+#include <algorithm>
+#include <cmath>
 #include <utility>
-
+#include <vector>
 #include <Eigen/Dense>
 
 namespace USTC_CG
 {
     using Point2D = Eigen::Vector2f;
+    using uchar = unsigned char;
 
 class Warper
 {

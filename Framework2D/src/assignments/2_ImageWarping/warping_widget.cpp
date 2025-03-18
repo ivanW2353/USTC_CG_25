@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include <warper/IDW_warper.h>
+#include <warper/RBF_warper.h>
 
 namespace USTC_CG
 {
@@ -159,7 +160,8 @@ void WarpingWidget::warping()
         case kIDW:
         {
             // HW2_TODO: Implement the IDW warping
-            // use selected points start_points_, end_points_ to construct the map 检查控制点数量是否合法
+            // use selected points start_points_, end_points_ to construct the map
+            // 检查控制点数量是否合法
             if (start_points_.size() != end_points_.size() ||
                 start_points_.empty())
             {
@@ -173,24 +175,24 @@ void WarpingWidget::warping()
             {
                 // 将ImGui坐标转换为图像坐标系 (注意Y轴方向)
                 Point2D p_i(
-                    start_points_[i].x, data_->height() - start_points_[i].y);
+                    start_points_[i].x, start_points_[i].y);
                 Point2D q_i(
-                    end_points_[i].x, data_->height() - end_points_[i].y);
+                    end_points_[i].x, end_points_[i].y);
                 control_points.emplace_back(p_i, q_i);
             }
 
             // Step 2: 初始化IDW变形器
             IDWWarper idw_warper(control_points, 2.0f /*mu*/);
 
-            // Step 3: 反向映射变形 (目标图像 -> 原图)
+            // Step 3: IDW变形
             for (int y = 0; y < data_->height(); ++y)
             {
                 for (int x = 0; x < data_->width(); ++x)
                 {
-                    // 目标图像坐标 (x,y)
+                    // 原图像坐标 (x,y)
                     Point2D source(x, y);
 
-                    // 使用IDW映射到原图坐标
+                    // 使用IDW映射
                     Point2D target = idw_warper.warp(source);
 
                     // 边界检查
@@ -209,8 +211,51 @@ void WarpingWidget::warping()
         case kRBF:
         {
             // HW2_TODO: Implement the RBF warping
-            // use selected points start_points_, end_points_ to construct the map
-            std::cout << "RBF not implemented." << std::endl;
+            // use selected points start_points_, end_points_ to construct the map 
+            // 检查控制点数量是否合法
+            if (start_points_.size() != end_points_.size() ||
+                start_points_.empty())
+            {
+                std::cerr << "Error: Control points mismatch!" << std::endl;
+                break;
+            }
+
+            // Step 1: 转换控制点格式为 (p_i, q_i)
+            std::vector<std::pair<Point2D, Point2D>> control_points;
+            for (size_t i = 0; i < start_points_.size(); ++i)
+            {
+                // 将ImGui坐标转换为图像坐标系 (注意Y轴方向)
+                Point2D p_i(start_points_[i].x, start_points_[i].y);
+                Point2D q_i(end_points_[i].x, end_points_[i].y);
+                control_points.emplace_back(p_i, q_i);
+            }
+
+            // Step 2: 初始化RBF变形器
+            RBFWarper rbf_warper(control_points);
+
+            // Step 3: RBF变形
+            for (int y = 0; y < data_->height(); ++y)
+            {
+                for (int x = 0; x < data_->width(); ++x)
+                {
+                    // 原图像坐标 (x,y)
+                    Point2D source(x, y);
+
+                    // 使用RBF映射
+                    Point2D target = rbf_warper.warp(source);
+
+                    // 边界检查
+                    int target_x = std::clamp(
+                        static_cast<int>(target.x()), 0, data_->width() - 1);
+                    int target_y = std::clamp(
+                        static_cast<int>(target.y()), 0, data_->height() - 1);
+
+                    // 复制最近像素颜色 (可替换为双线性插值)
+                    warped_image.set_pixel(
+                        target_x, target_y, data_->get_pixel(x, y));
+                }
+            }
+
             break;
         }
         default: break;
